@@ -1,6 +1,6 @@
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import {isURL} from 'validator';
+import isURL from "validator/lib/isURL";
 import morgan from 'morgan';
 import {filterImageFromURL, deleteLocalFiles} from './util/util';
 var timeout = require('connect-timeout');
@@ -35,7 +35,7 @@ var timeout = require('connect-timeout');
   app.use(morgan('short'));
   app.use(timeout('10s'));
 
-  const requireImageUrl = () => {return (req: Request, res: Response, next: function) => {
+  const requireImageUrl = () => {return (req: Request, res: Response, next: NextFunction) => {
       const imageUrl = req.query.image_url;
 
       if (!imageUrl) {
