@@ -1,9 +1,13 @@
 import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import isURL from "validator/lib/isURL";
 import morgan from 'morgan';
+
 import {filterImageFromURL, deleteLocalFiles} from './util/util';
-var timeout = require('connect-timeout');
+import validationImageURL from './middleware/validation.middleware';
+import errorMiddleware from './middleware/error.middleware';
+import connect from 'connect-timeout';
+
+//var timeout = require('connect-timeout');
 
 (async () => {
 
@@ -32,35 +36,31 @@ var timeout = require('connect-timeout');
 
   /**************************************************************************** */
 
+  // logger middleware
   app.use(morgan('short'));
-  app.use(timeout('10s'));
 
-  const requireImageUrl = () => {return (req: Request, res: Response, next: NextFunction) => {
-      const imageUrl = req.query.image_url;
+  // request timeout middleware
+  app.use(connect('10s'));
 
-      if (!imageUrl) {
-        return res.status(400).send({ message: 'Image url is required' });
-      }
-      
-      if (!isURL(imageUrl)) {
-        return res.status(400).send({ message: 'Invalid url format passed as argument' });
-      } else {
-        next();
-      }
-  }};
+  // error handler middleware
+  app.use(errorMiddleware);
 
-  // timeout('30s'), haltOnTimedout, 
-  app.get("/filteredimage", requireImageUrl(), async ( req: Request, res: Response ) => {
+  // filteredimage handler
+  app.get("/filteredimage", validationImageURL(), async ( req: Request, res: Response, next: NextFunction ) => {
     const filteredImagePath: string = await filterImageFromURL(req.query.image_url);
 
+    try {
     res.sendFile(filteredImagePath, async(err) => {
       if(err) {
         res.status(500).end();
       }
       else {
-        console.log('image %s processes successfuly', filteredImagePath)
+        console.log('image %s filtered successfuly', filteredImagePath)
       }
     });
+    } catch(err) {
+      next(err);
+    }
 
     res.on('finish', () => {
       deleteLocalFiles([filteredImagePath]);
