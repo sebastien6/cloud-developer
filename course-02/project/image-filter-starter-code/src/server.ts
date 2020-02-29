@@ -45,7 +45,8 @@ import connect from 'connect-timeout';
   // error handler middleware
   app.use(errorMiddleware);
 
-  // filteredimage handler
+  // filteredimage Endpoint
+  // take an image url and return the filtered image
   app.get("/filteredimage", validationImageURL(), async ( req: Request, res: Response, next: NextFunction ) => {
     const filteredImagePath: string = await filterImageFromURL(req.query.image_url);
 
