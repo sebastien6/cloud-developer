@@ -1,6 +1,13 @@
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
+import morgan from 'morgan';
+
 import {filterImageFromURL, deleteLocalFiles} from './util/util';
+import validationImageURL from './middleware/validation.middleware';
+import errorMiddleware from './middleware/error.middleware';
+import connect from 'connect-timeout';
+
+//var timeout = require('connect-timeout');
 
 (async () => {
 
@@ -29,12 +36,46 @@ import {filterImageFromURL, deleteLocalFiles} from './util/util';
 
   /**************************************************************************** */
 
+  // logger middleware
+  app.use(morgan('short'));
+
+  // request timeout middleware
+  app.use(connect('10s'));
+
+  // error handler middleware
+  app.use(errorMiddleware);
+
+  // filteredimage Endpoint
+  // take an image url and return the filtered image
+  app.get("/filteredimage", validationImageURL(), async ( req: Request, res: Response, next: NextFunction ) => {
+    const filteredImagePath: string = await filterImageFromURL(req.query.image_url);
+
+    try {
+      res.sendFile(filteredImagePath, async(err) => {
+        if(err) {
+          res.status(500).end();
+        }
+        else {
+          console.log('image %s filtered successfuly', filteredImagePath)
+        }
+      });
+    } catch(err) {
+      next(err);
+    }
+
+    res.on('finish', () => {
+      deleteLocalFiles([filteredImagePath]);
+      console.log('image %s deleted successfuly', filteredImagePath)
+    })
+  
+ });
   //! END @TODO1
+  
   
   // Root Endpoint
   // Displays a simple message to the user
-  app.get( "/", async ( req, res ) => {
-    res.send("try GET /filteredimage?image_url={{}}")
+  app.get( "/", async ( req: Request, res: Response ) => {
+    res.status(200).send("try GET /filteredimage?image_url={{}}")
   } );
   
 
