@@ -51,14 +51,14 @@ import connect from 'connect-timeout';
     const filteredImagePath: string = await filterImageFromURL(req.query.image_url);
 
     try {
-    res.sendFile(filteredImagePath, async(err) => {
-      if(err) {
-        res.status(500).end();
-      }
-      else {
-        console.log('image %s filtered successfuly', filteredImagePath)
-      }
-    });
+      res.sendFile(filteredImagePath, async(err) => {
+        if(err) {
+          res.status(500).end();
+        }
+        else {
+          console.log('image %s filtered successfuly', filteredImagePath)
+        }
+      });
     } catch(err) {
       next(err);
     }

@@ -37,6 +37,7 @@
     "express": "^4.17.1",
     "jimp": "^0.6.4",
     "morgan": "^1.9.1",
-    "validator": "^12.2.0"
+    "validator": "^12.2.0",
+    "url-exist": "^2.0.0"
   }
 }
