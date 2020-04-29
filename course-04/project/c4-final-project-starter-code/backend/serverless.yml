@@ -28,17 +28,18 @@ provider:
     minimumCompressionSize: 1024
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
-    TODOS_TABLE: Groups-${self:provider.stage}
+    TODOS_TABLE: Todos-${self:provider.stage}
     USER_ID_INDEX: UserIdIndex
     TODOS_S3_BUCKET: seb6-todo-images-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
-    AUTH_0_SECRET_ID: Auth0Secret-${self:provider.stage}
-    AUTH_0_SECRET_FIELD: auth0Secret
 
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
 functions:
+  RS256Auth:
+    handler: src/lambda/auth/rs256Auth0Authorizer.handler
+
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
@@ -50,15 +51,21 @@ functions:
           method: get
           path: todos
           cors: true
-          authorizer: Auth
+          authorizer: RS256Auth
     deploymentSettings:
       type: Canary10Percent5Minutes
       alias: Live
     iamRoleStatements:
       - Effect: Allow
         Action:
+          - dynamodb:Scan
           - dynamodb:GetItem
+          - dynamodb:Query
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
 
   # TODO: Configure this function
   CreateTodo:
@@ -67,10 +74,21 @@ functions:
       - http:
           method: post
           path: todos
-          authorizer: Auth
+          authorizer: RS256Auth
+          request:
+            schema:
+              application/json: ${file(models/create-todo-request.json)}
+          documentation:
+            summary: Create a new todo item
+            description: Create a new todo item, with a due date and an optional image attachment
     deploymentSettings:
       type: Canary10Percent5Minutes
       alias: Live
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
   # TODO: Configure this function
   UpdateTodo:
@@ -135,14 +153,16 @@ resources:
           - AttributeName: createdAt
             KeyType: RANGE
         LocalSecondaryIndexes:
-          - IndexName: ${self.provider.environment.USER_ID_INDEX}
+          - IndexName: ${self:provider.environment.USER_ID_INDEX}
             KeySchema:
               - AttributeName: todoId
                 KeyType: HASH
               - AttributeName: userId
                 KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
         StreamSpecification:
-          StreamViewType: NEW_TODOS
+          StreamViewType: NEW_IMAGE
         ProvisionedThroughput: 
           ReadCapacityUnits: "5"
           WriteCapacityUnits: "5"
@@ -183,7 +203,7 @@ resources:
               Effect: Allow
               Principal: '*'
               Action: 's3:GetObject'
-              Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
+              Resource: 'arn:aws:s3:::${self:provider.environment.TODOS_S3_BUCKET}/*'
         Bucket: !Ref AttachmentsBucket
 
     TodosSearch:
