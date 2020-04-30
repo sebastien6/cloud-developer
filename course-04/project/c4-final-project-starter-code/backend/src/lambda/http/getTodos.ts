@@ -3,7 +3,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } f
 import * as middy from 'middy'
 import { cors, httpErrorHandler } from 'middy/middlewares'
 
-import { getUserId } from '../utils'
+// import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
 import { getAllTodos } from '../../businessLogic/todos'
 const logger = createLogger('api')
@@ -14,11 +14,17 @@ export const getTodohandler: APIGatewayProxyHandler = async (event: APIGatewayPr
     func: 'getTodohandler',
     event: event
   })
-  const jwtToken = getUserId(event)
+  const authorization = event.headers.Authorization;
+  const split = authorization.split(' ');
+  const jwtToken = split[1];
 
   const items = await getAllTodos(jwtToken)
   return {
     statusCode: 201,
+  //   headers: {
+  //     'Access-Control-Allow-Origin': '*',
+  //     'Access-Control-Allow-Credentials': true,
+  // },
     body: JSON.stringify({
       items,
     })
@@ -27,4 +33,4 @@ export const getTodohandler: APIGatewayProxyHandler = async (event: APIGatewayPr
 
 export const handler = middy(getTodohandler)
   .use(httpErrorHandler())
-  .use(cors);
+  .use(cors({ credentials: true }));

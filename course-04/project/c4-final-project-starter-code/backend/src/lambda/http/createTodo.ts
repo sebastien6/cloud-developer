@@ -12,7 +12,6 @@ const logger = createLogger('api')
 
 const createTodoHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Processing event', {
-    level: 'info',
     func: 'createTodoHandler',
     event: event
   })
@@ -32,4 +31,4 @@ const createTodoHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyE
 
 export const handler = middy(createTodoHandler)
   .use(httpErrorHandler())
-  .use(cors);
+  .use(cors({ credentials: true }));

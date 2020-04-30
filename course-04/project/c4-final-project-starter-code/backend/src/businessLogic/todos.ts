@@ -1,4 +1,4 @@
-import { uuid } from 'uuid';
+import * as uuid from 'uuid';
 
 import { TodoItem } from '../models/TodoItem';
 import { TodoAccess } from '../dataLayer/todosAccess';

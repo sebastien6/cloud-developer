@@ -6,6 +6,7 @@ plugins:
   - serverless-aws-documentation
   - serverless-iam-roles-per-function
   - serverless-plugin-canary-deployments
+  - serverless-plugin-tracing
 
 custom:
   topicName: AttachmentTopic-${self:provider.stage}
@@ -32,14 +33,21 @@ provider:
     USER_ID_INDEX: UserIdIndex
     TODOS_S3_BUCKET: seb6-todo-images-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
+    DOMAIN: dev-bquc1kgl.auth0.com
 
+  tracing: true # enable tracing
+  iamRoleStatements:
+    - Effect: "Allow" # xray permissions (required)
+      Action:
+        - "xray:PutTraceSegments"
+        - "xray:PutTelemetryRecords"
+      Resource:
+        - "*"
+  
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
 functions:
-  RS256Auth:
-    handler: src/lambda/auth/rs256Auth0Authorizer.handler
-
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
@@ -51,10 +59,10 @@ functions:
           method: get
           path: todos
           cors: true
-          authorizer: RS256Auth
-    deploymentSettings:
-      type: Canary10Percent5Minutes
-      alias: Live
+          authorizer: Auth
+    # deploymentSettings:
+    #   type: Canary10Percent5Minutes
+    #   alias: Live
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -74,16 +82,16 @@ functions:
       - http:
           method: post
           path: todos
-          authorizer: RS256Auth
+          authorizer: Auth
           request:
             schema:
               application/json: ${file(models/create-todo-request.json)}
           documentation:
             summary: Create a new todo item
             description: Create a new todo item, with a due date and an optional image attachment
-    deploymentSettings:
-      type: Canary10Percent5Minutes
-      alias: Live
+    # deploymentSettings:
+    #   type: Canary10Percent5Minutes
+    #   alias: Live
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -98,9 +106,9 @@ functions:
           method: patch
           path: todos/{todoId}
           authorizer: Auth
-    deploymentSettings:
-      type: Canary10Percent5Minutes
-      alias: Live
+    # deploymentSettings:
+    #   type: Canary10Percent5Minutes
+    #   alias: Live
 
   # TODO: Configure this function
   DeleteTodo:
@@ -110,9 +118,9 @@ functions:
           method: delete
           path: todos/{todoId}
           authorizer: Auth
-    deploymentSettings:
-      type: Canary10Percent5Minutes
-      alias: Live
+    # deploymentSettings:
+    #   type: Canary10Percent5Minutes
+    #   alias: Live
 
   # TODO: Configure this function
   GenerateUploadUrl:
@@ -121,9 +129,9 @@ functions:
       - http:
           method: post
           path: todos/{todoId}/attachment
-    deploymentSettings:
-      type: Canary10Percent5Minutes
-      alias: Live
+    # deploymentSettings:
+    #   type: Canary10Percent5Minutes
+    #   alias: Live
   
   SyncWithElasticsearch:
     environment:

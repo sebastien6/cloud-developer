@@ -18,10 +18,11 @@ export class TodoAccess {
         const result = await this.docClient.query({
             TableName: this.todosTable,
             IndexName: this.userIdIndex,
-            KeyConditionExpression: 'userId= :userId',
+            KeyConditionExpression: 'todoId = :todoId and userId = :userId',
             ExpressionAttributeValues: {
+                ':todoId': '*',
                 ':userId': userId,
-            }
+            },
         }).promise()
     
         const items = result.Items;
