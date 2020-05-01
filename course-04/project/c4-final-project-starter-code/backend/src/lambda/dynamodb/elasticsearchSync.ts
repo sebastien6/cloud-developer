@@ -27,13 +27,17 @@ export const handler: DynamoDBStreamHandler = async (event: DynamoDBStreamEvent)
         const newItem = record.dynamodb.NewImage
         const todoId = newItem.todoId.S
 
+        // if (!newItem.attachmentUrl) {
+        //     newItem.attachmentUrl.S = '';
+        // }
+
         const body = {
             todoId: newItem.todoId.S,
             userId: newItem.userId.S,
             name: newItem.name.S,
             done: newItem.done.B,
-            createdAt: newItem.timestamp.S,
-            dueDate: newItem.timestamp.S,
+            createdAt: newItem.createdAt.S,
+            dueDate: newItem.dueDate.S,
             attachmentUrl: newItem.attachmentUrl.S
         }
 

@@ -4,6 +4,7 @@ import { TodoItem } from '../models/TodoItem';
 import { TodoAccess } from '../dataLayer/todosAccess';
 import { parseUserId } from '../auth/utils';
 import { CreateTodoRequest } from '../requests/CreateTodoRequest';
+// import { UpdateTodoRequest } from '../requests/UpdateTodoRequest';
 
 const todoAccess = new TodoAccess();
 
@@ -12,9 +13,8 @@ export async function getAllTodos(jwtToken: string): Promise<TodoItem[]> {
     return todoAccess.getAllTodos(userId);
 }
 
-export async function createTodo(jwtToken: string, request: CreateTodoRequest): Promise<TodoItem> {
+export async function createTodo(userId: string, request: CreateTodoRequest): Promise<TodoItem> {
     const todoId = uuid.v4();
-    const userId = parseUserId(jwtToken);
 
     return todoAccess.createTodo({
         todoId: todoId,
@@ -25,3 +25,11 @@ export async function createTodo(jwtToken: string, request: CreateTodoRequest): 
         done: false,
     });
 }
+
+// export async function deleteTodo(userId: string, jwtToken: string): Promise<void> {
+//     return null
+// }
+
+// export async function updateTodo(todoId: string, userId: string, jwtToken: string, request: UpdateTodoRequest): Promise<void> {
+//     return null
+// }

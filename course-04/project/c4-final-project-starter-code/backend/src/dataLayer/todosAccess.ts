@@ -10,7 +10,7 @@ const XAWS = AWSXRay.captureAWS(AWS);
 export class TodoAccess {
     constructor(
         private readonly todosTable = process.env.TODOS_TABLE,
-        private readonly userIdIndex = process.env.USER_ID_INDEX,
+        private readonly userIdIndex = process.env.TODO_ID_INDEX,
         private readonly docClient: DocumentClient = new XAWS.DynamoDB.DocumentClient()
     ){}
 
@@ -18,9 +18,8 @@ export class TodoAccess {
         const result = await this.docClient.query({
             TableName: this.todosTable,
             IndexName: this.userIdIndex,
-            KeyConditionExpression: 'todoId = :todoId and userId = :userId',
+            KeyConditionExpression: 'userId = :userId',
             ExpressionAttributeValues: {
-                ':todoId': '*',
                 ':userId': userId,
             },
         }).promise()

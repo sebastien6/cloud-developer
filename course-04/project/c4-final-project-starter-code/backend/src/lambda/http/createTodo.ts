@@ -17,9 +17,9 @@ const createTodoHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyE
   })
   
   const newTodo: CreateTodoRequest = JSON.parse(event.body);
-  const jwtToken = getUserId(event)
+  const userId = getUserId(event)
 
-  const item = await createTodo(jwtToken, newTodo);
+  const item = await createTodo(userId, newTodo);
 
   return {
     statusCode: 201,
