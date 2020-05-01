@@ -106,9 +106,9 @@ functions:
           method: patch
           path: todos/{todoId}
           authorizer: Auth
-    # deploymentSettings:
-    #   type: Canary10Percent5Minutes
-    #   alias: Live
+    deploymentSettings:
+      type: Canary10Percent5Minutes
+      alias: Live
 
   # TODO: Configure this function
   DeleteTodo:
@@ -118,9 +118,9 @@ functions:
           method: delete
           path: todos/{todoId}
           authorizer: Auth
-    # deploymentSettings:
-    #   type: Canary10Percent5Minutes
-    #   alias: Live
+    deploymentSettings:
+      type: Canary10Percent5Minutes
+      alias: Live
 
   # TODO: Configure this function
   GenerateUploadUrl:
