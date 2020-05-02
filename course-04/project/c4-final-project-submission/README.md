@@ -6,15 +6,18 @@ To implement this project, you need to implement a simple TODO application using
 ## Application Demo
 
 ### GetAllTodos specific to user
-User1:
-![User1 after login to web UI get all it's todos]
+
+User1 after login to web UI get all it's todos:
 (https://github.com/sebastien6/cloud-developer/blob/master/course-04/project/c4-final-project-submission/images/user01-getAllTodos.png)
 
-user2:
-![User1 after login to web UI get all it own todos: todos]
+![Alt text](images/user01-getAllTodos.png?raw=true "Image 1")
+
+user2 after login to web UI get all it own todos:
 (https://github.com/sebastien6/cloud-developer/blob/master/course-04/project/c4-final-project-submission/images/user02-getAllTodo.png)
+
+![Alt text](images/user02-getAllTodo.png?raw=true "Image 2")
 
 ### Update a Todo
 user 1 update one of its todos:
-![]
-(https://github.com/sebastien6/cloud-developer/blob/master/course-04/project/c4-final-project-submission/images/user01-update-todo.png)
+
+![Alt text](images/user01-update-todo.png?raw=true "Image 3")
