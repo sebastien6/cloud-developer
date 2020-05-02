@@ -15,7 +15,7 @@ const createTodoHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyE
     func: 'createTodoHandler',
     event: event
   })
-  
+
   const newTodo: CreateTodoRequest = JSON.parse(event.body);
   const userId = getUserId(event)
 

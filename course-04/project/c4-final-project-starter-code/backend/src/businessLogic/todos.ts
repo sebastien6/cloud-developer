@@ -2,14 +2,13 @@ import * as uuid from 'uuid';
 
 import { TodoItem } from '../models/TodoItem';
 import { TodoAccess } from '../dataLayer/todosAccess';
-import { parseUserId } from '../auth/utils';
+import { getUploadUrl } from '../dataLayer/s3Bucket';
 import { CreateTodoRequest } from '../requests/CreateTodoRequest';
-// import { UpdateTodoRequest } from '../requests/UpdateTodoRequest';
+import { UpdateTodoRequest } from '../requests/UpdateTodoRequest';
 
 const todoAccess = new TodoAccess();
 
-export async function getAllTodos(jwtToken: string): Promise<TodoItem[]> {
-    const userId = parseUserId(jwtToken);
+export async function getAllTodos(userId: string): Promise<TodoItem[]> {
     return todoAccess.getAllTodos(userId);
 }
 
@@ -26,10 +25,20 @@ export async function createTodo(userId: string, request: CreateTodoRequest): Pr
     });
 }
 
-// export async function deleteTodo(userId: string, jwtToken: string): Promise<void> {
-//     return null
-// }
+export async function deleteTodo(userId: string, todoId: string): Promise<void> {
+    todoAccess.deleteTodo(userId, todoId);
+}
 
-// export async function updateTodo(todoId: string, userId: string, jwtToken: string, request: UpdateTodoRequest): Promise<void> {
-//     return null
-// }
+export async function updateTodo(userId: string, todoId: string, request: UpdateTodoRequest): Promise<TodoItem> {
+    return todoAccess.updateTodo(userId, todoId, request)
+}
+
+export async function uploadUrl(userId: string, todoId: string): Promise<string> {
+    const bucketName = process.env.IMAGES_S3_BUCKET;
+
+    const imageId = uuid.v4();
+    const uploadUrl = getUploadUrl(imageId);
+
+    todoAccess.updateTodoAttachment(userId, todoId, `https://${bucketName}.s3.amazonaws.com/${imageId}`);
+    return uploadUrl;
+}

@@ -9,7 +9,7 @@ plugins:
   - serverless-plugin-tracing
 
 custom:
-  topicName: AttachmentTopic-${self:provider.stage}
+  topicName: imagesTopic-${self:provider.stage}
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true
@@ -30,8 +30,9 @@ provider:
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     TODOS_TABLE: Todos-${self:provider.stage}
-    TODO_ID_INDEX: TodoIdIndex
-    TODOS_S3_BUCKET: seb6-todo-images-${self:provider.stage}
+    CONNECTIONS_TABLE: connections-${self:provider.stage}
+    CREATED_AT_INDEX: CreatedAtIndex
+    IMAGES_S3_BUCKET: seb6-todo-images-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
     DOMAIN: dev-bquc1kgl.auth0.com
 
@@ -73,7 +74,7 @@ functions:
       - Effect: Allow
         Action:
           - dynamodb:Query
-        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODO_ID_INDEX}
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.CREATED_AT_INDEX}
 
   # TODO: Configure this function
   CreateTodo:
@@ -109,6 +110,15 @@ functions:
     deploymentSettings:
       type: Canary10Percent5Minutes
       alias: Live
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+        # - Effect: Allow
+        #   Action:
+        #     - dynamodb:Query
+        #   Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.USER_ID_INDEX}
 
   # TODO: Configure this function
   DeleteTodo:
@@ -118,6 +128,12 @@ functions:
           method: delete
           path: todos/{todoId}
           authorizer: Auth
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          # - dynamodb:GetItem
+          - dynamodb:DeleteItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
     deploymentSettings:
       type: Canary10Percent5Minutes
       alias: Live
@@ -129,9 +145,18 @@ functions:
       - http:
           method: post
           path: todos/{todoId}/attachment
-    # deploymentSettings:
-    #   type: Canary10Percent5Minutes
-    #   alias: Live
+    deploymentSettings:
+      type: Canary10Percent5Minutes
+      alias: Live
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+        Resource: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/* 
   
   SyncWithElasticsearch:
     environment:
@@ -141,6 +166,59 @@ functions:
       - stream:
           type: dynamodb
           arn: !GetAtt TodosDynamoDBTable.StreamArn
+  
+  SendUploadNotif: # reduce lambda function name to satisfy IAM role name 64 character limitation
+    environment:
+      STAGE: ${self:provider.stage}
+      REGION: ${self:provider.region}
+      API_ID:
+        Ref: WebsocketsApi
+    handler: src/lambda/s3/sendNotifications.handler
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Scan
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}
+    events:
+      - sns:
+          arn:
+            Fn::Join:
+              - ':'
+              - - arn:aws:sns
+                - Ref: AWS::Region
+                - Ref: AWS::AccountId
+                - ${self:custom.topicName}
+          topicName: ${self:custom.topicName}
+
+  ConnectHandler:
+    handler: src/lambda/websocket/connect.handler
+    events:
+      - websocket:
+          route: $connect    
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Scan
+          - dynamodb:PutItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}
+    deploymentSettings:
+      type: Canary10Percent5Minutes
+      alias: Live
+
+  DisconnectHandler:
+    handler: src/lambda/websocket/disconnect.handler
+    events:
+      - websocket:
+          route: $disconnect
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Scan
+          - dynamodb:DeleteItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CONNECTIONS_TABLE}
+    deploymentSettings:
+      type: Canary10Percent5Minutes
+      alias: Live
 
 resources:
   Resources:
@@ -158,14 +236,14 @@ resources:
         KeySchema:
           - AttributeName: userId
             KeyType: HASH
-          - AttributeName: createdAt
+          - AttributeName: todoId
             KeyType: RANGE
         LocalSecondaryIndexes:
-          - IndexName: ${self:provider.environment.TODO_ID_INDEX}
+          - IndexName: ${self:provider.environment.CREATED_AT_INDEX}
             KeySchema:
               - AttributeName: userId
                 KeyType: HASH
-              - AttributeName: todoId
+              - AttributeName: createdAt
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
@@ -180,7 +258,7 @@ resources:
       Type: AWS::S3::Bucket
       DependsOn: SNSTopicPolicy
       Properties:
-        BucketName: ${self:provider.environment.TODOS_S3_BUCKET}
+        BucketName: ${self:provider.environment.IMAGES_S3_BUCKET}
         NotificationConfiguration:
           TopicConfigurations:
             - Event: s3:ObjectCreated:Put
@@ -199,6 +277,22 @@ resources:
                 - DELETE
                 - HEAD
               MaxAge: 3000
+
+    WebSocketConnectionsDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: id
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput: 
+          ReadCapacityUnits: "5"
+          WriteCapacityUnits: "5"
+        TableName: ${self:provider.environment.CONNECTIONS_TABLE}
     
     BucketPolicy:
       Type: AWS::S3::BucketPolicy
@@ -211,7 +305,7 @@ resources:
               Effect: Allow
               Principal: '*'
               Action: 's3:GetObject'
-              Resource: 'arn:aws:s3:::${self:provider.environment.TODOS_S3_BUCKET}/*'
+              Resource: 'arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}/*'
         Bucket: !Ref AttachmentsBucket
 
     TodosSearch:
@@ -254,7 +348,7 @@ resources:
                 !Ref TodosTopic
               Condition:
                 ArnLike:
-                  AWS:SourceArn: arn:aws:s3:::${self:provider.environment.TODOS_S3_BUCKET}
+                  AWS:SourceArn: arn:aws:s3:::${self:provider.environment.IMAGES_S3_BUCKET}
         Topics:
           - !Ref TodosTopic
 

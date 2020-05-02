@@ -6,27 +6,26 @@ import { cors, httpErrorHandler } from 'middy/middlewares'
 // import { getUserId } from '../utils'
 import { createLogger } from '../../utils/logger'
 import { getAllTodos } from '../../businessLogic/todos'
+import { getUserId } from '../utils'
+
 const logger = createLogger('api')
 
-export const getTodohandler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+export const getTodoHandler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   logger.info('Processing event', {
-    level: 'info',
     func: 'getTodohandler',
     event: event
   })
-  const authorization = event.headers.Authorization;
-  const split = authorization.split(' ');
-  const jwtToken = split[1];
+  const userId = getUserId(event)
 
-  const items = await getAllTodos(jwtToken)
+  const items = await getAllTodos(userId)
   return {
-    statusCode: 201,
+    statusCode: 200,
     body: JSON.stringify({
       items,
     })
   };
 }
 
-export const handler = middy(getTodohandler)
+export const handler = middy(getTodoHandler)
   .use(httpErrorHandler())
   .use(cors({ credentials: true }));
