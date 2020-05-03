@@ -84,6 +84,7 @@ functions:
           method: post
           path: todos
           authorizer: Auth
+          cors: true
           request:
             schema:
               application/json: ${file(models/create-todo-request.json)}
@@ -107,6 +108,7 @@ functions:
           method: patch
           path: todos/{todoId}
           authorizer: Auth
+          cors: true
     deploymentSettings:
       type: Canary10Percent5Minutes
       alias: Live
@@ -128,6 +130,7 @@ functions:
           method: delete
           path: todos/{todoId}
           authorizer: Auth
+          cors: true
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -145,6 +148,7 @@ functions:
       - http:
           method: post
           path: todos/{todoId}/attachment
+          cors: true
     deploymentSettings:
       type: Canary10Percent5Minutes
       alias: Live
